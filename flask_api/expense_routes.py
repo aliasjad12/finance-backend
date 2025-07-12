@@ -7,13 +7,20 @@ from transformers import BertTokenizer, BertForSequenceClassification
 import pickle
 from firebase_admin import credentials, initialize_app, firestore
 import requests
-
+from dotenv import load_dotenv
+load_dotenv()
+import os
 
 
 app = Flask(__name__)
 
 # Initialize Firebase
-cred = credentials.Certificate("C:/Users/Abid computers/Desktop/finance_manager_backend/finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json")
+firebase_key_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+if not firebase_key_path or not os.path.exists(firebase_key_path):
+    raise RuntimeError("❌ Firebase key not found or invalid path.")
+
+cred = credentials.Certificate(firebase_key_path)
+
 initialize_app(cred)
 db = firestore.client()
 from budget_insights import bp as budget_bp

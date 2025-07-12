@@ -1,3 +1,6 @@
+
+from dotenv import load_dotenv
+load_dotenv()
 import os, torch, joblib
 import numpy as np
 import pandas as pd

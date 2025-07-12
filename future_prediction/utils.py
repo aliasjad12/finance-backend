@@ -3,12 +3,15 @@ import pandas as pd
 from firebase_admin import firestore
 import firebase_admin
 from firebase_admin import credentials
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 # Safe Firebase initialization
 if not firebase_admin._apps:
-    cred = credentials.Certificate(
-        "C:/Users/Abid computers/Desktop/finance_manager_backend/finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json"
-    )
+    firebase_key_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if not firebase_key_path or not os.path.exists(firebase_key_path):
+        raise RuntimeError("❌ Firebase key not found or invalid path.")
+    cred = credentials.Certificate(firebase_key_path)
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
