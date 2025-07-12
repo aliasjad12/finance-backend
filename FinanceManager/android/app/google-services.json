@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "448821904411",
+    "project_id": "fir-5b078",
+    "storage_bucket": "fir-5b078.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:448821904411:android:8672503f43de2c0743a4be",
+        "android_client_info": {
+          "package_name": "com.example.financemanager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4Xg-7npSuHf7F87ORyBeFnT1I7I9siVo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

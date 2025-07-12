@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: finance-backend
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: ./start.sh
+    envVars:
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json

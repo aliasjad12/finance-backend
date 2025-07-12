@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+*.pkl
+*.pt
+models/
+saved_models/
+finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json
+.env

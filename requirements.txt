@@ -1,0 +1,8 @@
+Flask
+firebase-admin
+transformers
+torch
+pmdarima
+joblib
+scikit-learn
+pandas
