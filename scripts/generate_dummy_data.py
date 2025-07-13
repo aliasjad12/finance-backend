@@ -12,7 +12,7 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
-user_id = "MdrxqkDP1EhlqDhtwNMXrtoA2I22"
+user_id = "K7fqFzy2RnNmEhPN4aCpm7ru4aF2"
 records_ref = db.collection("users").document(user_id).collection("records")
 
 # ─── 2. Wipe ALL existing month docs ─────────────────────────────────
@@ -23,17 +23,17 @@ print("🗑️ All previous records removed.")
 # ─── 3. Seasonal multipliers ─────────────────────────────────────────
 def month_factor(month, base=1.0):
     if month == 12:
-        return base * 1.15  # December shopping/food spike
+        return base * 1.2  # December shopping/food spike
     if month in (6, 7, 8):
-        return base * 1.5   # Summer travel
+        return base * 1.4   # Summer travel
     if month in (1, 2):
-        return base * 1.1   # Winter utilities
+        return base * 1.15   # Winter utilities
     if month == 11:
-        return base * 1.3   # November shopping bump
+        return base * 1.25   # November shopping bump
     return base
 
 # ─── 4. Generate 36 months (ending July 2025) ─────────────────────────
-TOTAL_INCOME = 200_000
+TOTAL_INCOME = 250_000
 categories = ["Food", "Utilities", "Travel", "Shopping", "Health"]
 
 start = datetime(2025, 7, 1)  # July 2025
@@ -43,12 +43,12 @@ for i in range(36):
     m_number  = month_dt.month
     year_frac = (35 - i) / 36  # trend: oldest = 0 → recent = 1
 
-    # ─ Category calculations
-    food     = int(40_000 * (1 + 0.05 * year_frac) * month_factor(m_number, 1))
-    util     = int(12_000 * month_factor(m_number, 1))
-    travel   = int(8_000 * month_factor(m_number, 1))
-    shopping = int(15_000 * (1 + 0.07 * year_frac) * month_factor(m_number, 1))
-    health   = int(TOTAL_INCOME * random.uniform(0.03, 0.06))
+    # ─ Slightly more randomized category calculations
+    food     = int(random.uniform(35_000, 45_000) * (1 + 0.04 * year_frac) * month_factor(m_number))
+    util     = int(random.uniform(10_000, 14_000) * month_factor(m_number))
+    travel   = int(random.uniform(7_000, 10_000) * month_factor(m_number))
+    shopping = int(random.uniform(12_000, 18_000) * (1 + 0.06 * year_frac) * month_factor(m_number))
+    health   = int(TOTAL_INCOME * random.uniform(0.025, 0.055))
 
     raw_total = food + util + travel + shopping + health
     if raw_total > TOTAL_INCOME:
@@ -82,8 +82,16 @@ for i in range(36):
             "timestamp": month_dt
         })
 
+    # ─── 7. Add dummy notification ──────────────────────────────────
+    record_doc.collection("notifications").add({
+        "title": "Welcome!",
+        "body": f"This is your notification for {m_str}",
+        "timestamp": datetime.now(),
+        "read": False
+    })
+
     # ⏮️ Move to previous month
     prev_month = month_dt.replace(day=1) - timedelta(days=1)
     start = prev_month.replace(day=1)
 
-print("✅ 36 months (Aug 2022 to Jul 2025) written successfully.")
+print("✅ 36 months (Aug 2022 to Jul 2025) written successfully, with new variance.")

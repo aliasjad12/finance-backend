@@ -8,3 +8,11 @@ services:
     envVars:
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json
+  - type: web
+    name: predict-api
+    env: python
+    plan: free
+    startCommand: python future_prediction/predict_api.py
+    envVars:
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json
