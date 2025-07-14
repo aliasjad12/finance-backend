@@ -19,7 +19,6 @@ def generate_budget():
     if not records:
         return jsonify({"error": "No financial records found"}), 404
 
-    # Get latest record
     records_data = [r.to_dict() | {"month": r.id} for r in records]
     records_data.sort(key=lambda r: r["month"])
     latest_month = records_data[-1]["month"]
@@ -34,7 +33,6 @@ def generate_budget():
     weighted_goals = []
     goal_names = []
 
-    # ✅ FETCH GOALS FROM GLOBAL LOCATION
     goals_ref = user_ref.collection("savings_goals")
     goals = list(goals_ref.stream())
     savings_goals = {doc.id: doc.to_dict() for doc in goals}
@@ -60,12 +58,11 @@ def generate_budget():
 
         monthly_needed = max((target - saved) / months_left, 0)
         monthly_savings_plan[name] = round(monthly_needed, 2)
-        weighted_goals.append((name, monthly_needed, months_left, goal_urgent))
+        weighted_goals.append((doc_id, name, monthly_needed, months_left, goal_urgent))
         goal_names.append(name)
 
     total_monthly_savings = sum(monthly_savings_plan.values())
 
-    # Forecast category expenses
     cat_hist = {}
     for r in records_data:
         for cat, amt in r.get("categoryExpenses", {}).items():
@@ -86,7 +83,6 @@ def generate_budget():
             recommended[cat] = predicted
             total_forecast += predicted
 
-    # Cap forecasted expenses to fit within leftover budget
     remaining_for_expenses = max(income - total_monthly_savings, 0)
     if total_forecast > remaining_for_expenses and total_forecast > 0:
         scale = remaining_for_expenses / total_forecast
@@ -96,7 +92,6 @@ def generate_budget():
     suggestions = {}
     income_left = income - spent
 
-    # Handle overspending
     if spent >= income:
         suggestions["⚠️ Overspending Alert"] = (
             f"You’ve already spent ₹{spent:.2f} out of ₹{income:.2f}. "
@@ -136,21 +131,43 @@ def generate_budget():
                         f"You can increase {cat} by ₹{diff:.2f} if savings are on track."
                     )
 
-    # Goal-specific suggestions
-    for name, monthly, months_left, urgent in weighted_goals:
+    # Enhanced goal-specific suggestions with proportional saving
+    income_left = income - spent
+    allocations = {}
+
+    if total_monthly_savings > 0 and income_left > 0:
+        if income_left >= total_monthly_savings:
+            allocations = {n: round(m, 2) for n, m in monthly_savings_plan.items()}
+        else:
+            for n, m in monthly_savings_plan.items():
+                share = m / total_monthly_savings
+                allocations[n] = round(share * income_left, 2)
+
+    for g_id, name, monthly_needed, months_left, urgent in weighted_goals:
+        save_now = allocations.get(name, 0.0)
+
+        goal_data = savings_goals[g_id]
+        target = goal_data.get("target_amount", 0)
+        saved = goal_data.get("amount_saved", 0)
+
+        remaining_after_now = max(target - saved - save_now, 0)
+        months_left_future = max(months_left - 1, 1)
+        future_monthly = round(remaining_after_now / months_left_future, 2)
+
         if urgent:
-            if income_left >= monthly:
+            if save_now >= remaining_after_now:
                 suggestions[f"Goal: {name}"] = (
-                    f"This goal ends this month. Save ₹{monthly:.2f} now to complete it."
+                    f"This goal ends this month. Put aside ₨{save_now:.0f} now to complete it."
                 )
             else:
                 suggestions[f"⚠️ Goal: {name}"] = (
-                    f"Not enough salary left to save for '{name}' this month. "
-                    "Try adjusting the target or continue next month."
+                    f"You only have ₨{income_left:.0f} left, which isn’t enough to finish “{name}”. "
+                    "Extend the deadline or adjust the target."
                 )
         else:
             suggestions[f"Goal: {name}"] = (
-                f"Save ₹{monthly:.2f}/month for {months_left} month(s) to reach '{name}'."
+                f"Save ₨{save_now:.0f} this month, then about ₨{future_monthly:.0f}/month "
+                f"for the next {months_left_future} month(s) to reach “{name}”."
             )
 
     if income > 0 and income_left / income < 0.10:
