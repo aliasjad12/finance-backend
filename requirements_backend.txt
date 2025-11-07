@@ -1,7 +1,12 @@
+# requirements_backend.txt
 Flask
 firebase-admin
 pandas
+numpy
 scikit-learn
 torch
 transformers
-python-dotenv 
+pmdarima
+joblib
+requests
+python-dotenv

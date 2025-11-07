@@ -10,3 +10,5 @@ pmdarima
 joblib
 scikit-learn
 pandas
+python-dotenv
+
