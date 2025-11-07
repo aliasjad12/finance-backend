@@ -1,2 +1,2 @@
 #!/bin/bash
-python flaskapi/expense_routes.py
+python flask_api/expense_routes.py

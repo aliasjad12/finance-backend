@@ -10,7 +10,7 @@ load_dotenv()
 if not firebase_admin._apps:
     firebase_key_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     if not firebase_key_path or not os.path.exists(firebase_key_path):
-        raise RuntimeError("❌ Firebase key not found or invalid path.")
+        raise RuntimeError(" Firebase key not found or invalid path.")
     cred = credentials.Certificate(firebase_key_path)
     firebase_admin.initialize_app(cred)
 

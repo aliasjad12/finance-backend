@@ -1,44 +1,54 @@
 from flask import Flask, request, jsonify
-import sys
-import os
+import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
 import pickle
 from firebase_admin import credentials, initialize_app, firestore
 import requests
 from dotenv import load_dotenv
-load_dotenv()
-import os
+from datetime import datetime
+import subprocess
 
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
-# Initialize Firebase
+# ───── Firebase Initialization ─────
 firebase_key_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 if not firebase_key_path or not os.path.exists(firebase_key_path):
-    raise RuntimeError("❌ Firebase key not found or invalid path.")
+    raise RuntimeError("Firebase key not found or invalid path.")
 
 cred = credentials.Certificate(firebase_key_path)
-
 initialize_app(cred)
 db = firestore.client()
+
 from budget_insights import bp as budget_bp
 app.register_blueprint(budget_bp)
-# Load Model and Tokenizer
-model_path = "../saved_models/bert_model.pth"
-category_map_path = "../saved_models/category_map.pkl"
+from admin_monitor import bp as admin_bp
+app.register_blueprint(admin_bp)
 
-# Load category map
-with open(category_map_path, "rb") as f:
+# ───── Category Classifier (DistilBERT) ─────
+MODEL_PATH = "../saved_models/distilbert_model.pth"
+CATEGORY_MAP_PATH = "../saved_models/category_map.pkl"
+
+with open(CATEGORY_MAP_PATH, "rb") as f:
     category_map = pickle.load(f)
 reverse_category_map = {v: k for k, v in category_map.items()}
 
-# Load model with correct label size
-model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=len(category_map))
-model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+model = DistilBertForSequenceClassification.from_pretrained(
+    "distilbert-base-uncased",
+    num_labels=len(category_map)
+)
+model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+model.to(device)
 model.eval()
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+
+tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
 
 @app.route("/categorize_expense", methods=["POST"])
 def categorize_expense():
@@ -47,18 +57,23 @@ def categorize_expense():
     if not expense_text:
         return jsonify({"error": "Expense text is required"}), 400
 
-    encoding = tokenizer(expense_text, padding="max_length", truncation=True, max_length=32, return_tensors="pt")
+    expense_text = expense_text.lower()
+    encoding = tokenizer(
+        expense_text,
+        padding="max_length",
+        truncation=True,
+        max_length=64,  # match training
+        return_tensors="pt"
+    )
+    encoding = {k: v.to(device) for k, v in encoding.items()}
+
     with torch.no_grad():
-        outputs = model(input_ids=encoding["input_ids"], attention_mask=encoding["attention_mask"])
+        outputs = model(**encoding)
         probs = torch.nn.functional.softmax(outputs.logits, dim=1)
         predicted_label = torch.argmax(probs).item()
         confidence = probs[0, predicted_label].item()
 
-    # 🚨 Confidence-based invalidation
-    if confidence < 0.4:
-        category = "unknown"
-    else:
-        category = reverse_category_map.get(predicted_label, "unknown")
+    category = reverse_category_map.get(predicted_label, "unknown") if confidence >= 0.4 else "unknown"
 
     return jsonify({
         "expense": expense_text,
@@ -74,10 +89,23 @@ def predict_future_expense():
 
     try:
         response = requests.get(
-            "http://localhost:5001/predict", params={"user_id": user_id}, timeout=5
+            "http://192.168.1.6:5001/predict",   # <-- use LAN IP, not localhost
+            params={"user_id": user_id},
+            timeout=60                           # <-- give more time
         )
-        return jsonify(response.json()), response.status_code
+        result = response.json()
+
+        if "categoryExpenses" not in result or not result["categoryExpenses"]:
+            if result.get("status") == "not_enough_data":
+                return jsonify({"status": "not_enough_data"}), 422
+            if result.get("status") == "model_pending":
+                return jsonify({"status": "model_pending"}), 202
+            return jsonify({"status": "unknown_error"}), 500
+
+        return jsonify(result), 200
+
     except Exception as e:
+        print(f"[ERROR] Proxy to /predict failed: {e}")  # <-- log real error
         return jsonify({"error": str(e)}), 500
 
 @app.route("/train_user_models", methods=["POST"])
@@ -88,12 +116,34 @@ def train_user_models():
         return jsonify({"error": "user_id is required"}), 400
 
     try:
-        from future_prediction.train_forcaster import train_all_categories
-        categories = ["Food", "Utilities", "Travel", "Shopping", "Health"]
-        train_all_categories(user_id, categories)
-        return jsonify({"status": "training started"})
+        script_path = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "..", "future_prediction", "train_forcaster.py"
+        ))
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+        # 🔹 Always use venv python
+        python_venv_path = r"C:\Users\Abid computers\Desktop\finance_manager_backend\venv\Scripts\python.exe"
+
+        # 1. Run script once synchronously to check retraining status
+        check_cmd = [python_venv_path, script_path, user_id]
+        result = subprocess.run(check_cmd, cwd=project_root, capture_output=True, text=True)
+
+        if "already up to date" in result.stdout:
+            return jsonify({"status": "up_to_date"}), 200
+
+        # 2. Otherwise, spawn training async in background
+        subprocess.Popen(
+            [python_venv_path, script_path, user_id],
+            cwd=project_root,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return jsonify({"status": "training started"}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 
 @app.route("/track_goal_progress", methods=["GET"])
@@ -104,7 +154,6 @@ def track_goal_progress():
     if not user_id or not goal_id:
         return jsonify({"error": "User ID and Goal ID are required"}), 400
 
-    # ✅ NEW LOCATION: Global savings_goals collection
     goal_ref = db.collection('users').document(user_id).collection('savings_goals').document(goal_id)
     goal = goal_ref.get()
 
@@ -112,12 +161,10 @@ def track_goal_progress():
         return jsonify({"error": "Goal not found"}), 404
 
     goal_data = goal.to_dict()
-
     target_amount = goal_data.get("target_amount", 0)
     amount_saved = goal_data.get("amount_saved", 0)
-    progress_percentage = (amount_saved / target_amount) * 100 if target_amount != 0 else 0
+    progress_percentage = (amount_saved / target_amount) * 100 if target_amount else 0
 
-    # Generate suggestion based on progress
     if progress_percentage >= 100:
         suggestion = "🎉 Congratulations, you've reached your goal!"
     elif progress_percentage >= 75:
@@ -135,8 +182,6 @@ def track_goal_progress():
         "suggestion": suggestion
     })
 
-
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
