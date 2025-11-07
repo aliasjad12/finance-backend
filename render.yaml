@@ -1,9 +1,10 @@
 services:
+  # ---------------------- MAIN FLASK BACKEND ----------------------
   - type: web
     name: finance-backend
     env: python
     plan: free
-    rootDir: .                       # root-level Flask app
+    rootDir: .                          # repo root
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements_backend.txt
@@ -12,12 +13,12 @@ services:
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json
 
+  # ---------------------- PREDICT-API SERVICE ----------------------
   - type: web
     name: predict-api
     env: python
     plan: free
-    rootDir: future_prediction    
-    pythonVersion: 3.10.14    # 👈 build context = that folder
+    rootDir: future_prediction           # use this folder as context
     buildCommand: |
       pip install --upgrade pip
       pip install numpy Cython wheel
