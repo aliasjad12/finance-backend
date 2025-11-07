@@ -3,7 +3,7 @@ services:
     name: finance-backend
     env: python
     plan: free
-    buildCommand: ""
+    buildCommand: "pip install -r requirements.txt"
     startCommand: ./start.sh
     envVars:
       - key: GOOGLE_APPLICATION_CREDENTIALS
@@ -13,7 +13,7 @@ services:
     name: predict-api
     env: python
     plan: free
-    buildCommand: ""
+    buildCommand: "pip install -r requirements.txt"
     startCommand: python future_prediction/predict_api.py
     envVars:
       - key: GOOGLE_APPLICATION_CREDENTIALS
