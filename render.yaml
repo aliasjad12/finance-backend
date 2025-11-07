@@ -6,6 +6,7 @@ services:
     plan: free
     rootDir: .                          # repo root
     buildCommand: |
+      cp ../runtime.txt ./ || true
       pip install --upgrade pip
       pip install -r requirements_backend.txt
     startCommand: ./start.sh
@@ -20,6 +21,7 @@ services:
     plan: free
     rootDir: future_prediction           # use this folder as context
     buildCommand: |
+      cp ../runtime.txt ./ || true
       pip install --upgrade pip
       pip install numpy Cython wheel
       pip install -r ../requirements_predict.txt
