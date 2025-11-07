@@ -16,7 +16,8 @@ services:
     name: predict-api
     env: python
     plan: free
-    rootDir: future_prediction       # 👈 build context = that folder
+    rootDir: future_prediction    
+    pythonVersion: 3.10.14    # 👈 build context = that folder
     buildCommand: |
       pip install --upgrade pip
       pip install numpy Cython wheel
