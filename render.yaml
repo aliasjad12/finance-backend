@@ -1,5 +1,4 @@
 services:
-  # ---------------------- MAIN FLASK BACKEND ----------------------
   - type: web
     name: finance-backend
     env: python
@@ -10,10 +9,11 @@ services:
       pip install -r requirements_backend.txt
     startCommand: ./start.sh
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.14
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json
 
-  # ---------------------- PREDICT-API SERVICE ----------------------
   - type: web
     name: predict-api
     env: python
@@ -25,5 +25,7 @@ services:
       pip install -r ../requirements_predict.txt
     startCommand: python predict_api.py
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.14
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: finalyear-3b277-firebase-adminsdk-fbsvc-b2c4c69496.json
