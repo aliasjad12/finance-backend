@@ -31,8 +31,9 @@ from admin_monitor import bp as admin_bp
 app.register_blueprint(admin_bp)
 
 # ───── Category Classifier (DistilBERT) ─────
-MODEL_PATH = "../saved_models/distilbert_model.pth"
-CATEGORY_MAP_PATH = "../saved_models/category_map.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CATEGORY_MAP_PATH = os.path.join(BASE_DIR, "..", "saved_models", "category_map.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, "..", "saved_models", "distilbert_model.pth")
 
 with open(CATEGORY_MAP_PATH, "rb") as f:
     category_map = pickle.load(f)
