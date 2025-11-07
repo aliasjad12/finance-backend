@@ -3,6 +3,7 @@ services:
     name: finance-backend
     env: python
     plan: free
+    rootDir: .                     # 👈 Add this
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements_backend.txt
@@ -15,6 +16,7 @@ services:
     name: predict-api
     env: python
     plan: free
+    rootDir: .                     # 👈 Add this too
     buildCommand: |
       pip install --upgrade pip
       pip install numpy Cython wheel
