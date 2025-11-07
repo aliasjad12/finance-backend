@@ -1,3 +1,7 @@
+# requirements_predict.txt
+numpy>=1.21.2
+Cython>=0.29
+wheel
 Flask
 firebase-admin
 transformers

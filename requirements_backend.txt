@@ -2,3 +2,5 @@ Flask
 firebase-admin
 pandas
 scikit-learn
+torch
+transformers
