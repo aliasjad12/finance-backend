@@ -90,7 +90,7 @@ def predict_future_expense():
 
     try:
         response = requests.get(
-            "http://192.168.1.6:5001/predict",   # <-- use LAN IP, not localhost
+            "http://127.0.0.1:7860/predict",   # <-- use LAN IP, not localhost
             params={"user_id": user_id},
             timeout=60                           # <-- give more time
         )
